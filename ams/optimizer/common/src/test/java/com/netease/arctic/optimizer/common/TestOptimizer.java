@@ -35,7 +35,7 @@ public class TestOptimizer extends OptimizerTestBase {
 
   @Test
   public void testStartOptimizer() throws InterruptedException {
-    OptimizerConfig optimizerConfig = OptimizerTestHelpers.buildOptimizerConfig(TEST_AMS.getServerUrl());
+    OptimizerConfig optimizerConfig = OptimizerTestHelpers.buildOptimizerConfig(TEST_AMS.getThriftUrl());
     Optimizer optimizer = new Optimizer(optimizerConfig);
     new Thread(optimizer::startOptimizing).start();
     TimeUnit.SECONDS.sleep(1);

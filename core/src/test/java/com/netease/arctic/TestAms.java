@@ -43,8 +43,8 @@ public class TestAms extends ExternalResource {
     }
   }
 
-  public String getServerUrl() {
-    return mockAms.getServerUrl();
+  public String getThriftUrl() {
+    return mockAms.getThriftUrl();
   }
 
   public MockArcticMetastoreServer.AmsHandler getAmsHandler() {
@@ -53,6 +53,10 @@ public class TestAms extends ExternalResource {
 
   public MockArcticMetastoreServer.OptimizerManagerHandler getOptimizerHandler() {
     return mockAms.optimizerHandler();
+  }
+
+  public void reset() {
+    this.mockAms.reset();
   }
 
   @Override

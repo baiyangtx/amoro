@@ -77,7 +77,7 @@ public abstract class CatalogTestBase {
   }
 
   protected String getCatalogUrl() {
-    return TEST_AMS.getServerUrl() + "/" + catalogMeta.getCatalogName();
+    return TEST_AMS.getThriftUrl() + "/" + catalogMeta.getCatalogName();
   }
 
   protected CatalogMeta getCatalogMeta() {

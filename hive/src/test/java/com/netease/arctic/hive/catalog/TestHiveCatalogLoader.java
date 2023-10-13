@@ -65,6 +65,6 @@ public class TestHiveCatalogLoader {
   }
 
   private String getCatalogUrl(String catalogName) {
-    return TEST_AMS.getServerUrl() + "/" + catalogName;
+    return TEST_AMS.getThriftUrl() + "/" + catalogName;
   }
 }

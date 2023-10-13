@@ -69,7 +69,7 @@ public class SparkTestContext {
 
   public void close() {
     if (!SingletonResourceUtil.isUseSingletonResource()) {
-      ams.getAmsHandler().cleanUp();
+      ams.reset();
       catalogSet = false;
     }
     ams.after();
@@ -126,7 +126,7 @@ public class SparkTestContext {
   }
 
   public String catalogUrl(String arcticCatalogName) {
-    return this.ams.getServerUrl() + "/" + arcticCatalogName;
+    return this.ams.getThriftUrl() + "/" + arcticCatalogName;
   }
 
   private String hiveVersion() {
@@ -154,11 +154,11 @@ public class SparkTestContext {
     configs.put("spark.sql.catalog." + EXTERNAL_HADOOP_CATALOG_NAME, CATALOG_IMPL);
     configs.put(
         "spark.sql.catalog." + EXTERNAL_HADOOP_CATALOG_NAME + ".url",
-        this.ams.getServerUrl() + "/" + EXTERNAL_HADOOP_CATALOG_NAME);
+        this.ams.getThriftUrl() + "/" + EXTERNAL_HADOOP_CATALOG_NAME);
     configs.put("spark.sql.catalog." + EXTERNAL_HIVE_CATALOG_NAME, CATALOG_IMPL);
     configs.put(
         "spark.sql.catalog." + EXTERNAL_HIVE_CATALOG_NAME + ".url",
-        this.ams.getServerUrl() + "/" + EXTERNAL_HIVE_CATALOG_NAME);
+        this.ams.getThriftUrl() + "/" + EXTERNAL_HIVE_CATALOG_NAME);
 
     configs.put("hive.metastore.uris", this.hiveMetastoreUri());
     configs.put("spark.sql.catalogImplementation", "hive");

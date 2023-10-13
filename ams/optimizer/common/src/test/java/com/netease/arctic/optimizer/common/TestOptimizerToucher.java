@@ -15,7 +15,7 @@ public class TestOptimizerToucher extends OptimizerTestBase {
 
   @Test
   public void testRegisterOptimizer() throws InterruptedException {
-    OptimizerConfig optimizerConfig = OptimizerTestHelpers.buildOptimizerConfig(TEST_AMS.getServerUrl());
+    OptimizerConfig optimizerConfig = OptimizerTestHelpers.buildOptimizerConfig(TEST_AMS.getThriftUrl());
     OptimizerToucher optimizerToucher = new OptimizerToucher(optimizerConfig);
 
     TestTokenChangeListener tokenChangeListener = new TestTokenChangeListener();

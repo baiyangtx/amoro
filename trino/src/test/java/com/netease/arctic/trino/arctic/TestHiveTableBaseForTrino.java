@@ -134,7 +134,7 @@ public abstract class TestHiveTableBaseForTrino extends TableTestBaseForTrino {
   }
 
   protected void setupTables() throws Exception {
-    hiveCatalog = (ArcticHiveCatalog) CatalogLoader.load(AMS.getUrl(TEST_CATALOG_NAME));
+    hiveCatalog = (ArcticHiveCatalog) CatalogLoader.load(AMS.getThriftUrl(TEST_CATALOG_NAME));
 
     testHiveTable = (UnkeyedHiveTable) hiveCatalog
         .newTableBuilder(HIVE_TABLE_ID, HIVE_TABLE_SCHEMA)

@@ -46,7 +46,7 @@ public class TestOptimizerExecutor extends OptimizerTestBase {
 
   @Before
   public void startOptimizer() {
-    OptimizerConfig optimizerConfig = OptimizerTestHelpers.buildOptimizerConfig(TEST_AMS.getServerUrl());
+    OptimizerConfig optimizerConfig = OptimizerTestHelpers.buildOptimizerConfig(TEST_AMS.getThriftUrl());
     optimizerExecutor = new OptimizerExecutor(optimizerConfig, 0);
     new Thread(optimizerExecutor::start).start();
   }

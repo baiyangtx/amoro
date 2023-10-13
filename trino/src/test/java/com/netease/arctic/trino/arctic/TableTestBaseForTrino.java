@@ -116,7 +116,7 @@ public abstract class TableTestBaseForTrino extends AbstractTestQueryFramework {
   protected KeyedTable testKeyedTable;
 
   protected void setupTables() throws Exception {
-    testCatalog = CatalogLoader.load(AMS.getUrl(CatalogTestHelper.TEST_CATALOG_NAME));
+    testCatalog = CatalogLoader.load(AMS.getThriftUrl(CatalogTestHelper.TEST_CATALOG_NAME));
 
     File tableDir = tmp.newFolder();
     testTable = testCatalog

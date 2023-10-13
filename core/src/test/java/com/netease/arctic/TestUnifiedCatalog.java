@@ -64,7 +64,7 @@ public class TestUnifiedCatalog {
   @Test
   public void testCatalogLoader() {
     UnifiedCatalog catalog = UnifiedCatalogLoader.loadUnifiedCatalog(
-        testAms.getServerUrl(), meta.getCatalogName(), Maps.newHashMap());
+        testAms.getThriftUrl(), meta.getCatalogName(), Maps.newHashMap());
 
     Assert.assertNotNull(catalog);
     Assert.assertEquals(CommonUnifiedCatalog.class.getName(), catalog.getClass().getName());
