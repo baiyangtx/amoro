@@ -77,6 +77,11 @@ public class TestIcebergServerTableDescriptor extends TestServerTableDescriptor 
     getTable().updateSchema().deleteColumn("renamed_col").commit();
   }
 
+  @Override
+  protected FormatTableDescriptor getTableDescriptor() {
+    return new MixedAndIcebergTableDescriptor();
+  }
+
   private Table getTable() {
     return (Table) getAmoroCatalog().loadTable(TEST_DB, TEST_TABLE).originalTable();
   }

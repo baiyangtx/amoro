@@ -35,12 +35,13 @@ import org.apache.amoro.server.dashboard.model.ServerTableMeta;
 import org.apache.amoro.server.dashboard.model.TagOrBranchInfo;
 import org.apache.amoro.server.persistence.PersistentBase;
 import org.apache.amoro.server.table.TableService;
-import org.apache.iceberg.util.Pair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.iceberg.util.ThreadPools;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.concurrent.ExecutorService;
 
 public class ServerTableDescriptor extends PersistentBase {
@@ -54,17 +55,13 @@ public class ServerTableDescriptor extends PersistentBase {
 
     // All table formats will jointly reuse the work thread pool named iceberg-worker-pool-%d
     ExecutorService executorService = ThreadPools.getWorkerPool();
-
-    FormatTableDescriptor[] formatTableDescriptors =
-        new FormatTableDescriptor[] {
-          new MixedAndIcebergTableDescriptor(executorService),
-          new PaimonTableDescriptor(executorService),
-          new HudiTableDescriptor(executorService)
-        };
-    for (FormatTableDescriptor formatTableDescriptor : formatTableDescriptors) {
-      for (TableFormat format : formatTableDescriptor.supportFormat()) {
-        formatDescriptorMap.put(format, formatTableDescriptor);
+    ServiceLoader<FormatTableDescriptor> tableDescriptorLoader =
+        ServiceLoader.load(FormatTableDescriptor.class);
+    for (FormatTableDescriptor descriptor : tableDescriptorLoader) {
+      for (TableFormat format : descriptor.supportFormat()) {
+        formatDescriptorMap.put(format, descriptor);
       }
+      descriptor.withIoExecutor(executorService);
     }
   }
 

@@ -23,6 +23,8 @@ import org.apache.amoro.TableFormat;
 import org.apache.amoro.api.CommitMetaProducer;
 import org.apache.amoro.data.DataFileType;
 import org.apache.amoro.data.FileNameRules;
+import org.apache.amoro.process.ProcessStatus;
+import org.apache.amoro.process.ProcessTaskStatus;
 import org.apache.amoro.server.dashboard.component.reverser.DDLReverser;
 import org.apache.amoro.server.dashboard.component.reverser.IcebergTableMetaExtract;
 import org.apache.amoro.server.dashboard.model.AMSColumnInfo;
@@ -43,8 +45,10 @@ import org.apache.amoro.server.dashboard.model.TableSummary;
 import org.apache.amoro.server.dashboard.model.TagOrBranchInfo;
 import org.apache.amoro.server.dashboard.utils.AmsUtil;
 import org.apache.amoro.server.dashboard.utils.TableStatCollector;
+import org.apache.amoro.server.optimizing.MetricsSummary;
 import org.apache.amoro.server.optimizing.OptimizingProcessMeta;
 import org.apache.amoro.server.optimizing.OptimizingTaskMeta;
+import org.apache.amoro.server.optimizing.TaskRuntime;
 import org.apache.amoro.server.persistence.PersistentBase;
 import org.apache.amoro.server.persistence.mapper.OptimizingMapper;
 import org.apache.amoro.shade.guava32.com.google.common.collect.ImmutableList;
@@ -58,6 +62,7 @@ import org.apache.amoro.table.UnkeyedTable;
 import org.apache.amoro.utils.MixedDataFiles;
 import org.apache.amoro.utils.MixedTableUtil;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.iceberg.ContentFile;
 import org.apache.iceberg.HasTableOperations;
 import org.apache.iceberg.IcebergFindFiles;
@@ -68,7 +73,6 @@ import org.apache.iceberg.SnapshotSummary;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.io.CloseableIterable;
-import org.apache.iceberg.util.Pair;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.iceberg.util.SnapshotUtil;
 import org.slf4j.Logger;
@@ -92,10 +96,11 @@ public class MixedAndIcebergTableDescriptor extends PersistentBase
 
   private static final Logger LOG = LoggerFactory.getLogger(MixedAndIcebergTableDescriptor.class);
 
-  private final ExecutorService executorService;
+  private ExecutorService executorService;
 
-  public MixedAndIcebergTableDescriptor(ExecutorService executorService) {
-    this.executorService = executorService;
+  @Override
+  public void withIoExecutor(ExecutorService ioExecutor) {
+    this.executorService = ioExecutor;
   }
 
   @Override
@@ -257,8 +262,8 @@ public class MixedAndIcebergTableDescriptor extends PersistentBase
 
   private void collectSnapshots(
       List<AmoroSnapshotsOfTable> snapshotsOfTables, Pair<Table, Long> tableAndSnapshotId) {
-    Table table = tableAndSnapshotId.first();
-    Long snapshotId = tableAndSnapshotId.second();
+    Table table = tableAndSnapshotId.getLeft();
+    Long snapshotId = tableAndSnapshotId.getRight();
     if (snapshotId != null) {
       SnapshotUtil.ancestorsOf(snapshotId, table::snapshot)
           .forEach(
@@ -516,7 +521,7 @@ public class MixedAndIcebergTableDescriptor extends PersistentBase
 
     return Pair.of(
         processMetaList.stream()
-            .map(p -> OptimizingProcessInfo.build(p, optimizingTasks.get(p.getProcessId())))
+            .map(p -> buildOptimizingProcessInfo(p, optimizingTasks.get(p.getProcessId())))
             .collect(Collectors.toList()),
         total);
   }
@@ -540,7 +545,7 @@ public class MixedAndIcebergTableDescriptor extends PersistentBase
                     String.valueOf(taskMeta.getProcessId()),
                     taskMeta.getTaskId(),
                     taskMeta.getPartitionData(),
-                    taskMeta.getStatus(),
+                    ProcessTaskStatus.valueOf(taskMeta.getStatus().name()),
                     taskMeta.getRetryNum(),
                     taskMeta.getOptimizerToken(),
                     taskMeta.getThreadId(),
@@ -735,5 +740,56 @@ public class MixedAndIcebergTableDescriptor extends PersistentBase
       result.sort(Comparator.comparing(TagOrBranchInfo::getName));
       return result;
     }
+  }
+
+  private static OptimizingProcessInfo buildOptimizingProcessInfo(
+      OptimizingProcessMeta meta, List<OptimizingTaskMeta> optimizingTaskStats) {
+    if (meta == null) {
+      return null;
+    }
+    OptimizingProcessInfo result = new OptimizingProcessInfo();
+
+    if (optimizingTaskStats != null) {
+      int successTasks = 0;
+      int runningTasks = 0;
+      for (OptimizingTaskMeta optimizingTaskStat : optimizingTaskStats) {
+        TaskRuntime.Status status = optimizingTaskStat.getStatus();
+        switch (status) {
+          case SUCCESS:
+            successTasks++;
+            break;
+          case SCHEDULED:
+          case ACKED:
+            runningTasks++;
+            break;
+        }
+      }
+      result.setTotalTasks(optimizingTaskStats.size());
+      result.setSuccessTasks(successTasks);
+      result.setRunningTasks(runningTasks);
+    }
+    MetricsSummary summary = meta.getSummary();
+    if (summary != null) {
+      result.setInputFiles(summary.getInputFilesStatistics());
+      result.setOutputFiles(summary.getOutputFilesStatistics());
+    }
+
+    result.setTableId(meta.getTableId());
+    result.setCatalogName(meta.getCatalogName());
+    result.setDbName(meta.getDbName());
+    result.setTableName(meta.getTableName());
+
+    result.setProcessId(String.valueOf(meta.getProcessId()));
+    result.setStartTime(meta.getPlanTime());
+    result.setOptimizingType(meta.getOptimizingType().name());
+    result.setStatus(ProcessStatus.valueOf(meta.getStatus().name()));
+    result.setFailReason(meta.getFailReason());
+    result.setDuration(
+        meta.getEndTime() > 0
+            ? meta.getEndTime() - meta.getPlanTime()
+            : System.currentTimeMillis() - meta.getPlanTime());
+    result.setFinishTime(meta.getEndTime());
+    result.setSummary(meta.getSummary().summaryAsMap(true));
+    return result;
   }
 }
