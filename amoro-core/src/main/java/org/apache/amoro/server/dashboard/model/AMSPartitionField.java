@@ -18,9 +18,6 @@
 
 package org.apache.amoro.server.dashboard.model;
 
-import org.apache.iceberg.PartitionField;
-import org.apache.iceberg.Schema;
-
 public class AMSPartitionField {
   String field;
   String sourceField;
@@ -77,16 +74,6 @@ public class AMSPartitionField {
 
   public void setSourceFieldId(Integer sourceFieldId) {
     this.sourceFieldId = sourceFieldId;
-  }
-
-  public static AMSPartitionField buildFromPartitionSpec(Schema schema, PartitionField pf) {
-    return new Builder()
-        .field(pf.name())
-        .sourceField(schema.findColumnName(pf.sourceId()))
-        .transform(pf.transform().toString())
-        .fieldId(pf.fieldId())
-        .sourceFieldId(pf.sourceId())
-        .build();
   }
 
   public static class Builder {

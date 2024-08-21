@@ -18,12 +18,11 @@
 
 package org.apache.amoro.server.dashboard.model;
 
-import org.apache.amoro.data.DataFileType;
 import org.apache.amoro.utils.CommonUtil;
 
 public class PartitionFileBaseInfo {
   private String commitId;
-  private DataFileType fileType;
+  private String fileType;
   private Long commitTime;
   private String size;
   private String partition;
@@ -35,7 +34,7 @@ public class PartitionFileBaseInfo {
 
   public PartitionFileBaseInfo(
       String commitId,
-      DataFileType fileType,
+      String fileType,
       Long commitTime,
       String partition,
       int specId,
@@ -52,7 +51,7 @@ public class PartitionFileBaseInfo {
 
   public PartitionFileBaseInfo(
       String commitId,
-      DataFileType fileType,
+      String fileType,
       Long commitTime,
       String partition,
       String path,
@@ -75,11 +74,11 @@ public class PartitionFileBaseInfo {
     this.commitId = commitId;
   }
 
-  public DataFileType getFileType() {
+  public String getFileType() {
     return fileType;
   }
 
-  public void setFileType(DataFileType fileType) {
+  public void setFileType(String fileType) {
     this.fileType = fileType;
   }
 

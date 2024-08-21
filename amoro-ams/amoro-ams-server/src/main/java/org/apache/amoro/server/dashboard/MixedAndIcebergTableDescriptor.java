@@ -56,6 +56,7 @@ import org.apache.amoro.shade.guava32.com.google.common.collect.Iterables;
 import org.apache.amoro.shade.guava32.com.google.common.collect.Maps;
 import org.apache.amoro.table.KeyedTable;
 import org.apache.amoro.table.MixedTable;
+import org.apache.amoro.table.PrimaryKeySpec;
 import org.apache.amoro.table.TableIdentifier;
 import org.apache.amoro.table.TableProperties;
 import org.apache.amoro.table.UnkeyedTable;
@@ -66,13 +67,16 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.iceberg.ContentFile;
 import org.apache.iceberg.HasTableOperations;
 import org.apache.iceberg.IcebergFindFiles;
+import org.apache.iceberg.PartitionField;
 import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.SnapshotRef;
 import org.apache.iceberg.SnapshotSummary;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.io.CloseableIterable;
+import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.iceberg.util.SnapshotUtil;
 import org.slf4j.Logger;
@@ -356,7 +360,7 @@ public class MixedAndIcebergTableDescriptor extends PersistentBase
                 result.add(
                     new PartitionFileBaseInfo(
                         snapshotId,
-                        DataFileType.ofContentId(f.content().id()),
+                        DataFileType.ofContentId(f.content().id()).name(),
                         snapshotTime,
                         MixedTableUtil.getMixedTablePartitionSpecById(mixedTable, f.specId())
                             .partitionToPath(f.partition()),
@@ -370,7 +374,7 @@ public class MixedAndIcebergTableDescriptor extends PersistentBase
                 result.add(
                     new PartitionFileBaseInfo(
                         snapshotId,
-                        DataFileType.ofContentId(f.content().id()),
+                        DataFileType.ofContentId(f.content().id()).name(),
                         snapshotTime,
                         MixedTableUtil.getMixedTablePartitionSpecById(mixedTable, f.specId())
                             .partitionToPath(f.partition()),
@@ -384,7 +388,7 @@ public class MixedAndIcebergTableDescriptor extends PersistentBase
                 result.add(
                     new PartitionFileBaseInfo(
                         snapshotId,
-                        DataFileType.ofContentId(f.content().id()),
+                        DataFileType.ofContentId(f.content().id()).name(),
                         snapshotTime,
                         MixedTableUtil.getMixedTablePartitionSpecById(mixedTable, f.specId())
                             .partitionToPath(f.partition()),
@@ -398,7 +402,7 @@ public class MixedAndIcebergTableDescriptor extends PersistentBase
                 result.add(
                     new PartitionFileBaseInfo(
                         snapshotId,
-                        DataFileType.ofContentId(f.content().id()),
+                        DataFileType.ofContentId(f.content().id()).name(),
                         snapshotTime,
                         MixedTableUtil.getMixedTablePartitionSpecById(mixedTable, f.specId())
                             .partitionToPath(f.partition()),
@@ -606,7 +610,7 @@ public class MixedAndIcebergTableDescriptor extends PersistentBase
           }
           return new PartitionFileBaseInfo(
               String.valueOf(snapshotId),
-              dataFileType,
+              dataFileType.name(),
               commitTime,
               partitionPath,
               contentFile.specId(),
@@ -673,11 +677,11 @@ public class MixedAndIcebergTableDescriptor extends PersistentBase
     fillTableProperties(serverTableMeta, table.properties());
     serverTableMeta.setPartitionColumnList(
         table.spec().fields().stream()
-            .map(item -> AMSPartitionField.buildFromPartitionSpec(table.spec().schema(), item))
+            .map(item -> buildPartitionFieldFromPartitionSpec(table.spec().schema(), item))
             .collect(Collectors.toList()));
     serverTableMeta.setSchema(
         table.schema().columns().stream()
-            .map(AMSColumnInfo::buildFromNestedField)
+            .map(MixedAndIcebergTableDescriptor::buildColumnInfoFromNestedField)
             .collect(Collectors.toList()));
 
     serverTableMeta.setFilter(null);
@@ -687,7 +691,7 @@ public class MixedAndIcebergTableDescriptor extends PersistentBase
       if (kt.primaryKeySpec() != null) {
         serverTableMeta.setPkList(
             kt.primaryKeySpec().fields().stream()
-                .map(item -> AMSColumnInfo.buildFromPartitionSpec(table.spec().schema(), item))
+                .map(item -> buildColumnInfoFromPartitionSpec(table.spec().schema(), item))
                 .collect(Collectors.toList()));
       }
     }
@@ -734,12 +738,59 @@ public class MixedAndIcebergTableDescriptor extends PersistentBase
       snapshotRefs.forEach(
           (name, snapshotRef) -> {
             if (predicate.test(snapshotRef)) {
-              result.add(new TagOrBranchInfo(name, snapshotRef));
+              result.add(buildTagOrBranchInfo(name, snapshotRef));
             }
           });
       result.sort(Comparator.comparing(TagOrBranchInfo::getName));
       return result;
     }
+  }
+
+  private static AMSColumnInfo buildColumnInfoFromNestedField(Types.NestedField field) {
+    if (field == null) {
+      return null;
+    }
+    return new AMSColumnInfo.Builder()
+        .field(field.name())
+        .type(field.type().toString())
+        .required(field.isRequired())
+        .comment(field.doc())
+        .build();
+  }
+
+  /** Construct ColumnInfo based on schema and primary key field. */
+  private static AMSColumnInfo buildColumnInfoFromPartitionSpec(
+      Schema schema, PrimaryKeySpec.PrimaryKeyField pkf) {
+    return buildColumnInfoFromNestedField(schema.findField(pkf.fieldName()));
+  }
+
+  private static AMSPartitionField buildPartitionFieldFromPartitionSpec(
+      Schema schema, PartitionField pf) {
+    return new AMSPartitionField.Builder()
+        .field(pf.name())
+        .sourceField(schema.findColumnName(pf.sourceId()))
+        .transform(pf.transform().toString())
+        .fieldId(pf.fieldId())
+        .sourceFieldId(pf.sourceId())
+        .build();
+  }
+
+  private static TagOrBranchInfo buildTagOrBranchInfo(String name, SnapshotRef snapshotRef) {
+    String type = null;
+    if (snapshotRef.isTag()) {
+      type = TagOrBranchInfo.TAG;
+    } else if (snapshotRef.isBranch()) {
+      type = TagOrBranchInfo.BRANCH;
+    } else {
+      throw new RuntimeException("Invalid snapshot ref: " + snapshotRef);
+    }
+    return new TagOrBranchInfo(
+        name,
+        snapshotRef.snapshotId(),
+        snapshotRef.minSnapshotsToKeep(),
+        snapshotRef.maxSnapshotAgeMs(),
+        snapshotRef.maxRefAgeMs(),
+        type);
   }
 
   private static OptimizingProcessInfo buildOptimizingProcessInfo(

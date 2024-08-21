@@ -18,10 +18,6 @@
 
 package org.apache.amoro.server.dashboard.model;
 
-import org.apache.amoro.table.PrimaryKeySpec;
-import org.apache.iceberg.Schema;
-import org.apache.iceberg.types.Types;
-
 /** AMS server column info. */
 public class AMSColumnInfo {
   String field;
@@ -68,24 +64,6 @@ public class AMSColumnInfo {
     this.type = type;
     this.required = required;
     this.comment = comment;
-  }
-
-  public static AMSColumnInfo buildFromNestedField(Types.NestedField field) {
-    if (field == null) {
-      return null;
-    }
-    return new Builder()
-        .field(field.name())
-        .type(field.type().toString())
-        .required(field.isRequired())
-        .comment(field.doc())
-        .build();
-  }
-
-  /** Construct ColumnInfo based on schema and primary key field. */
-  public static AMSColumnInfo buildFromPartitionSpec(
-      Schema schema, PrimaryKeySpec.PrimaryKeyField pkf) {
-    return buildFromNestedField(schema.findField(pkf.fieldName()));
   }
 
   public static class Builder {

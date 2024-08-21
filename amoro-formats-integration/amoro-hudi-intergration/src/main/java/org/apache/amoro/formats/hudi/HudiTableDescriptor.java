@@ -20,7 +20,6 @@ package org.apache.amoro.formats.hudi;
 
 import org.apache.amoro.AmoroTable;
 import org.apache.amoro.TableFormat;
-import org.apache.amoro.data.DataFileType;
 import org.apache.amoro.process.ProcessStatus;
 import org.apache.amoro.process.ProcessTaskStatus;
 import org.apache.amoro.server.dashboard.FormatTableDescriptor;
@@ -307,7 +306,7 @@ public class HudiTableDescriptor implements FormatTableDescriptor {
       PartitionFileBaseInfo file =
           new PartitionFileBaseInfo(
               baseFile.getCommitTime(),
-              DataFileType.BASE_FILE,
+              "BASE_FILE",
               commitTime,
               partition,
               0,
@@ -321,13 +320,7 @@ public class HudiTableDescriptor implements FormatTableDescriptor {
               // TODO: can't get commit time from log file
               PartitionFileBaseInfo file =
                   new PartitionFileBaseInfo(
-                      "",
-                      DataFileType.LOG_FILE,
-                      0L,
-                      partition,
-                      0,
-                      l.getPath().toString(),
-                      l.getFileSize());
+                      "", "LOG_FILE", 0L, partition, 0, l.getPath().toString(), l.getFileSize());
               files.add(file);
             });
     return files.stream();

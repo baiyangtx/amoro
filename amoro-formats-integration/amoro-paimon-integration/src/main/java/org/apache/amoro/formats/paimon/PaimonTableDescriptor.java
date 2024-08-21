@@ -18,13 +18,11 @@
 
 package org.apache.amoro.formats.paimon;
 
-import static org.apache.amoro.data.DataFileType.INSERT_FILE;
 import static org.apache.paimon.operation.FileStoreScan.Plan.groupByPartFiles;
 
 import org.apache.amoro.AmoroTable;
 import org.apache.amoro.TableFormat;
 import org.apache.amoro.api.CommitMetaProducer;
-import org.apache.amoro.data.DataFileType;
 import org.apache.amoro.process.ProcessStatus;
 import org.apache.amoro.server.dashboard.FormatTableDescriptor;
 import org.apache.amoro.server.dashboard.component.reverser.DDLReverser;
@@ -241,7 +239,7 @@ public class PaimonTableDescriptor implements FormatTableDescriptor {
         amsDataFileInfos.add(
             new PartitionFileBaseInfo(
                 null,
-                DataFileType.BASE_FILE,
+                "BASE_FILE",
                 entry.file().creationTimeEpochMillis(),
                 partitionString(entry.partition(), entry.bucket(), fileStorePathFactory),
                 fullFilePath(store, entry),
@@ -348,7 +346,7 @@ public class PaimonTableDescriptor implements FormatTableDescriptor {
       partitionFileBases.add(
           new PartitionFileBaseInfo(
               snapshotId == null ? null : snapshotId.toString(),
-              INSERT_FILE,
+              "INSERT_FILE",
               manifestEntry.file().creationTimeEpochMillis(),
               partitionSt,
               0,
