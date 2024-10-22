@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 
 public class ResourceContainers {
   public static final String EXTERNAL_CONTAINER_NAME = "external";
+  public static final String EMBEDDED_CONTAINER_NAME = "embedded";
   private static final Map<String, ContainerWrapper> globalContainers = Maps.newHashMap();
   private static volatile boolean isInitialized = false;
 
@@ -44,6 +45,10 @@ public class ResourceContainers {
     containerList.forEach(
         metadata -> globalContainers.put(metadata.getName(), new ContainerWrapper(metadata)));
     isInitialized = true;
+  }
+
+  public static boolean releasableContainer(String containerName) {
+    return !(EXTERNAL_CONTAINER_NAME.equals(containerName) || EMBEDDED_CONTAINER_NAME.equals(containerName));
   }
 
   public static ResourceContainer get(String name) {

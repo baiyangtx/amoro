@@ -39,4 +39,7 @@ public class OptimizerProperties {
   public static final String OPTIMIZER_MEMORY_STORAGE_SIZE = "memory-storage-size";
   public static final String MAX_INPUT_FILE_SIZE_PER_THREAD = "max-input-file-size-per-thread";
   public static final Long MAX_INPUT_FILE_SIZE_PER_THREAD_DEFAULT = 512 * 1024 * 1024L; // 512MB
+
+  public static final String EMBEDDED_OPTIMIZER_PARALLEL = "embedded-optimizer-parallel";
+  public static final Integer EMBEDDED_OPTIMIZER_PARALLEL_DEFAULT = 1;
 }

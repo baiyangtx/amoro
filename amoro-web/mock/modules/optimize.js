@@ -181,7 +181,8 @@ export default [
             "coreNumber": 1,
             "memory": 8192,
             "jobStatus": "RUNNING",
-            "container": "localContainer"
+            "container": "localContainer",
+            "releasdble": true
           }
         ],
         "total": 1

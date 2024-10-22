@@ -47,10 +47,14 @@ public class AbstractOptimizerOperator implements Serializable {
     this.config = config;
   }
 
+  protected OptimizingService.Iface getClient() {
+    return OptimizingClientPools.getClient(config.getAmsUrl());
+  }
+
   protected <T> T callAms(AmsCallOperation<T> operation) throws TException {
     while (isStarted()) {
       try {
-        return operation.call(OptimizingClientPools.getClient(config.getAmsUrl()));
+        return operation.call(getClient());
       } catch (Throwable t) {
         if (shouldReturnNull(t)) {
           return null;
@@ -92,7 +96,7 @@ public class AbstractOptimizerOperator implements Serializable {
       if (tokenIsReady()) {
         String token = getToken();
         try {
-          return operation.call(OptimizingClientPools.getClient(config.getAmsUrl()), token);
+          return operation.call(getClient(), token);
         } catch (Throwable t) {
           if (t instanceof AmoroException
               && ErrorCodes.PLUGIN_RETRY_AUTH_ERROR_CODE == ((AmoroException) (t)).getErrorCode()) {

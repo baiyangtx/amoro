@@ -42,6 +42,8 @@ public class OptimizerInstanceInfo {
 
   private String container;
 
+  private boolean releasable;
+
   public static OptimizerInstanceInfo.Builder builder() {
     return new OptimizerInstanceInfo.Builder();
   }
@@ -118,6 +120,14 @@ public class OptimizerInstanceInfo {
     this.container = container;
   }
 
+  public void setReleasable(boolean releasable) {
+    this.releasable = releasable;
+  }
+
+  public boolean isReleasable() {
+    return this.releasable;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -178,6 +188,8 @@ public class OptimizerInstanceInfo {
 
     private String container;
 
+    private boolean releasable;
+
     public Builder token(String token) {
       this.token = token;
       return this;
@@ -223,6 +235,11 @@ public class OptimizerInstanceInfo {
       return this;
     }
 
+    public Builder releasable(boolean releasable) {
+      this.releasable = releasable;
+      return this;
+    }
+
     public OptimizerInstanceInfo build() {
       OptimizerInstanceInfo instanceInfo = new OptimizerInstanceInfo();
       instanceInfo.setToken(token);
@@ -234,6 +251,7 @@ public class OptimizerInstanceInfo {
       instanceInfo.setMemory(memory);
       instanceInfo.setJobStatus(jobStatus);
       instanceInfo.setContainer(container);
+      instanceInfo.setReleasable(releasable);
       return instanceInfo;
     }
   }

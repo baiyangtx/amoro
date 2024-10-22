@@ -37,6 +37,7 @@ import org.apache.amoro.exception.TaskNotFoundException;
 import org.apache.amoro.properties.CatalogMetaProperties;
 import org.apache.amoro.resource.Resource;
 import org.apache.amoro.resource.ResourceGroup;
+import org.apache.amoro.server.optimizing.EmbeddedOptimizer;
 import org.apache.amoro.server.optimizing.OptimizingQueue;
 import org.apache.amoro.server.optimizing.OptimizingStatus;
 import org.apache.amoro.server.optimizing.TaskRuntime;
@@ -47,6 +48,7 @@ import org.apache.amoro.server.resource.OptimizerInstance;
 import org.apache.amoro.server.resource.OptimizerManager;
 import org.apache.amoro.server.resource.OptimizerThread;
 import org.apache.amoro.server.resource.QuotaProvider;
+import org.apache.amoro.server.resource.ResourceContainers;
 import org.apache.amoro.server.table.DefaultTableService;
 import org.apache.amoro.server.table.RuntimeHandlerChain;
 import org.apache.amoro.server.table.TableRuntime;
@@ -55,6 +57,7 @@ import org.apache.amoro.shade.guava32.com.google.common.base.Preconditions;
 import org.apache.amoro.shade.guava32.com.google.common.collect.ImmutableList;
 import org.apache.amoro.shade.guava32.com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.amoro.table.TableProperties;
+import org.apache.amoro.utils.CompatiblePropertyUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -96,6 +99,7 @@ public class DefaultOptimizingService extends StatedPersistentBase
   private final Map<String, OptimizingQueue> optimizingQueueByGroup = new ConcurrentHashMap<>();
   private final Map<String, OptimizingQueue> optimizingQueueByToken = new ConcurrentHashMap<>();
   private final Map<String, OptimizerInstance> authOptimizers = new ConcurrentHashMap<>();
+  private final Map<String, EmbeddedOptimizer> embeddedOptimizes = new ConcurrentHashMap<>();
   private final OptimizerKeeper optimizerKeeper = new OptimizerKeeper();
   private final TableService tableService;
   private final RuntimeHandlerChain tableHandlerChain;
@@ -141,6 +145,8 @@ public class DefaultOptimizingService extends StatedPersistentBase
                   Optional.ofNullable(tableRuntimes).orElseGet(ArrayList::new),
                   maxPlanningParallelism);
           optimizingQueueByGroup.put(groupName, optimizingQueue);
+          EmbeddedOptimizer optimizer = new EmbeddedOptimizer(group, this);
+          embeddedOptimizes.put(groupName, optimizer);
         });
     optimizers.forEach(optimizer -> registerOptimizer(optimizer, false));
     groupToTableRuntimes
@@ -193,6 +199,9 @@ public class DefaultOptimizingService extends StatedPersistentBase
   public OptimizingTask pollTask(String authToken, int threadId) {
     LOG.debug("Optimizer {} (threadId {}) try polling task", authToken, threadId);
     OptimizingQueue queue = getQueueByToken(authToken);
+    OptimizerInstance optimizerInstance = authOptimizers.get(authToken);
+    Preconditions.checkNotNull(optimizerInstance, "Token:" + authToken + " is out of authenticated");
+
     return Optional.ofNullable(queue.pollTask(pollingTimeout))
         .map(task -> extractOptimizingTask(task, authToken, threadId, queue))
         .orElse(null);
@@ -253,9 +262,11 @@ public class DefaultOptimizingService extends StatedPersistentBase
                         optimizerTouchTimeout));
               }
             });
-
+    boolean embedded = CompatiblePropertyUtil.propertyAsBoolean(
+        registerInfo.getProperties(), EmbeddedOptimizer.PROPERTY_IS_EMBEDDED, false);
     OptimizingQueue queue = getQueueByGroup(registerInfo.getGroupName());
-    OptimizerInstance optimizer = new OptimizerInstance(registerInfo, queue.getContainerName());
+    String containerName = embedded ? ResourceContainers.EMBEDDED_CONTAINER_NAME : queue.getContainerName();
+        OptimizerInstance optimizer = new OptimizerInstance(registerInfo, containerName);
     registerOptimizer(optimizer, true);
     return optimizer.getToken();
   }
@@ -306,9 +317,12 @@ public class DefaultOptimizingService extends StatedPersistentBase
 
   @Override
   public void createResourceGroup(ResourceGroup resourceGroup) {
+    EmbeddedOptimizer optimizer = new EmbeddedOptimizer(resourceGroup, this);
     doAsTransaction(
         () -> {
           doAs(ResourceMapper.class, mapper -> mapper.insertResourceGroup(resourceGroup));
+        },
+        () -> {
           OptimizingQueue optimizingQueue =
               new OptimizingQueue(
                   tableService,
@@ -318,7 +332,9 @@ public class DefaultOptimizingService extends StatedPersistentBase
                   new ArrayList<>(),
                   maxPlanningParallelism);
           optimizingQueueByGroup.put(resourceGroup.getName(), optimizingQueue);
+          embeddedOptimizes.put(resourceGroup.getName(), optimizer);
         });
+    optimizer.start();
   }
 
   @Override
@@ -327,6 +343,10 @@ public class DefaultOptimizingService extends StatedPersistentBase
       doAs(ResourceMapper.class, mapper -> mapper.deleteResourceGroup(groupName));
       OptimizingQueue optimizingQueue = optimizingQueueByGroup.remove(groupName);
       optimizingQueue.dispose();
+      embeddedOptimizes.computeIfPresent(groupName, (n, o) -> {
+        o.dispose();
+        return null;
+      });
     } else {
       throw new RuntimeException(
           String.format(
@@ -388,6 +408,8 @@ public class DefaultOptimizingService extends StatedPersistentBase
     optimizingQueueByToken.clear();
     authOptimizers.clear();
     planExecutor.shutdown();
+    embeddedOptimizes.values().forEach(EmbeddedOptimizer::dispose);
+    embeddedOptimizes.clear();
   }
 
   public boolean canDeleteResourceGroup(String name) {
@@ -462,6 +484,7 @@ public class DefaultOptimizingService extends StatedPersistentBase
       LOG.info("OptimizerManagementService begin initializing");
       loadOptimizingQueues(tableRuntimeList);
       optimizerKeeper.start();
+      embeddedOptimizes.values().forEach(EmbeddedOptimizer::start);
       LOG.info("SuspendingDetector for Optimizer has been started.");
       LOG.info("OptimizerManagementService initializing has completed");
     }

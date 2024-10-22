@@ -153,6 +153,7 @@ public class OptimizerGroupController {
                         .memory(e.getMemoryMb())
                         .jobStatus("RUNNING")
                         .container(e.getContainerName())
+                        .releasable(ResourceContainers.releasableContainer(e.getContainerName()))
                         .build())
             .collect(Collectors.toList());
 

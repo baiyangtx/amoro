@@ -122,6 +122,7 @@ public class OptimizerToucher extends AbstractOptimizerOperator {
     }
   }
 
+  @FunctionalInterface
   public interface TokenChangeListener {
     void tokenChange(String newToken);
   }

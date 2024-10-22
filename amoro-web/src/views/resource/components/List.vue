@@ -89,7 +89,7 @@ function refresh(resetPage?: boolean) {
 }
 
 function releaseModal(record: any) {
-  if (record.container === 'external') {
+  if (!record.releasdble) {
     return
   }
   Modal.confirm({
@@ -219,7 +219,7 @@ onMounted(() => {
         </template>
         <template v-if="column.dataIndex === 'operation'">
           <span
-            class="primary-link" :class="{ disabled: record.container === 'external' }"
+            class="primary-link" :class="{ disabled: !record.releasable }"
             @click="releaseModal(record)"
           >
             {{ t('release') }}
