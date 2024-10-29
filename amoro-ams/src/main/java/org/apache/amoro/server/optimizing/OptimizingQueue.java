@@ -72,7 +72,6 @@ import java.util.stream.Collectors;
 public class OptimizingQueue extends PersistentBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(OptimizingQueue.class);
-
   private final QuotaProvider quotaProvider;
   private final Queue<TableOptimizingProcess> tableQueue = new LinkedTransferQueue<>();
   private final Queue<TaskRuntime<RewriteStageTask>> retryTaskQueue = new LinkedTransferQueue<>();
@@ -158,16 +157,21 @@ public class OptimizingQueue extends PersistentBase {
   }
 
   private void clearProcess(TableOptimizingProcess optimizingProcess) {
+
     tableQueue.removeIf(process -> process.getProcessId() == optimizingProcess.getProcessId());
     retryTaskQueue.removeIf(
         taskRuntime -> taskRuntime.getTaskId().getProcessId() == optimizingProcess.getProcessId());
   }
 
   public TaskRuntime pollTask(long maxWaitTime) {
+    return pollTask(maxWaitTime, t -> true);
+  }
+
+  public TaskRuntime pollTask(long maxWaitTime, Predicate<TaskRuntime> predicate) {
     long deadline = calculateDeadline(maxWaitTime);
-    TaskRuntime task = fetchTask();
+    TaskRuntime task = fetchTask(predicate);
     while (task == null && waitTask(deadline)) {
-      task = fetchTask();
+      task = fetchTask(predicate);
     }
     return task;
   }
@@ -192,7 +196,7 @@ public class OptimizingQueue extends PersistentBase {
     }
   }
 
-  private TaskRuntime fetchTask() {
+  private TaskRuntime fetchTask(Predicate<TaskRuntime> predicate) {
     return Optional.ofNullable(retryTaskQueue.poll()).orElseGet(this::fetchScheduledTask);
   }
 

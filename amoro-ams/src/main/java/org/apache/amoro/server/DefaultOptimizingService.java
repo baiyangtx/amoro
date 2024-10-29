@@ -40,6 +40,7 @@ import org.apache.amoro.resource.ResourceGroup;
 import org.apache.amoro.server.optimizing.EmbeddedOptimizer;
 import org.apache.amoro.server.optimizing.OptimizingQueue;
 import org.apache.amoro.server.optimizing.OptimizingStatus;
+import org.apache.amoro.server.optimizing.RewriteStageTask;
 import org.apache.amoro.server.optimizing.TaskRuntime;
 import org.apache.amoro.server.persistence.StatedPersistentBase;
 import org.apache.amoro.server.persistence.mapper.OptimizerMapper;
@@ -201,10 +202,22 @@ public class DefaultOptimizingService extends StatedPersistentBase
     OptimizingQueue queue = getQueueByToken(authToken);
     OptimizerInstance optimizerInstance = authOptimizers.get(authToken);
     Preconditions.checkNotNull(optimizerInstance, "Token:" + authToken + " is out of authenticated");
-
-    return Optional.ofNullable(queue.pollTask(pollingTimeout))
+    Predicate<TaskRuntime> predicate = pollTaskPredicate(optimizerInstance);
+    return Optional.ofNullable(queue.pollTask(pollingTimeout, predicate))
         .map(task -> extractOptimizingTask(task, authToken, threadId, queue))
         .orElse(null);
+  }
+
+  private Predicate<TaskRuntime> pollTaskPredicate(OptimizerInstance instance) {
+    boolean embedded = CompatiblePropertyUtil.propertyAsBoolean(
+        instance.getProperties(),
+        EmbeddedOptimizer.PROPERTY_IS_EMBEDDED,
+        false
+    );
+    if (embedded) {
+      return  t -> !(t.getTaskDescriptor() instanceof RewriteStageTask) ;
+    }
+    return t -> true;
   }
 
   private OptimizingTask extractOptimizingTask(
