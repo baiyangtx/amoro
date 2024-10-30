@@ -19,6 +19,7 @@
 package org.apache.amoro.server.optimizing;
 
 import org.apache.amoro.process.ProcessStatus;
+import org.apache.amoro.process.SimpleFuture;
 
 public interface OptimizingProcess {
 
@@ -45,6 +46,9 @@ public interface OptimizingProcess {
   void commit();
 
   MetricsSummary getSummary();
+
+  SimpleFuture getCompleteFuture();
+
 
   enum Status {
     RUNNING,

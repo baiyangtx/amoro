@@ -308,6 +308,13 @@ public class TaskRuntime<T extends StagedTaskDescriptor<?, ?, ?>> extends Stated
     CANCELED // If Optimizing process failed, all tasks will be CANCELED except for SUCCESS tasks
   }
 
+  public enum Classifier {
+    SCHEDULED_REWRITE,
+    RETRY_REWRITE,
+    NON_REWRITE
+
+  }
+
   public static class TaskQuota {
 
     private long processId;
