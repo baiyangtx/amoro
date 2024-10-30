@@ -43,12 +43,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -60,8 +58,9 @@ public class OptimizingQueue extends PersistentBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(OptimizingQueue.class);
   private final QuotaProvider quotaProvider;
-//  private final Queue<TableOptimizingProcess> tableQueue = new LinkedTransferQueue<>();
-  private final Map<Long, TableOptimizingProcess> tableOptimizingProcesses = new ConcurrentHashMap<>();
+  //  private final Queue<TableOptimizingProcess> tableQueue = new LinkedTransferQueue<>();
+  private final Map<Long, TableOptimizingProcess> tableOptimizingProcesses =
+      new ConcurrentHashMap<>();
   private final SchedulingPolicy scheduler;
   private final TableManager tableManager;
   private final Executor planExecutor;
@@ -108,7 +107,8 @@ public class OptimizingQueue extends PersistentBase {
         scheduler.addTable(tableRuntime);
       } else if (tableRuntime.getOptimizingStatus() != OptimizingStatus.COMMITTING
           && tableRuntime.getOptimizingProcess() != null) {
-        TableOptimizingProcess process = (TableOptimizingProcess) tableRuntime.getOptimizingProcess();
+        TableOptimizingProcess process =
+            (TableOptimizingProcess) tableRuntime.getOptimizingProcess();
         tableOptimizingProcesses.put(process.getProcessId(), process);
       }
     } else {
@@ -265,13 +265,13 @@ public class OptimizingQueue extends PersistentBase {
     try {
       AmoroTable<?> table = tableManager.loadTable(tableRuntime.getTableIdentifier());
       OptimizingPlanner planner =
-          new OptimizingPlanner(
+          OptimizingPlanner.createOptimizingPlanner(
               tableRuntime.refresh(table),
               (MixedTable) table.originalTable(),
               getAvailableCore(),
               maxInputSizePerThread());
       if (planner.isNecessary()) {
-        return new TableOptimizingProcess(planner, tableManager);
+        return new TableOptimizingProcess(planner, tableRuntime, tableManager);
       } else {
         tableRuntime.completeEmptyProcess();
         return null;
@@ -306,7 +306,7 @@ public class OptimizingQueue extends PersistentBase {
     taskRuntime.reset();
     Long processId = taskRuntime.getTaskId().getProcessId();
     Optional.ofNullable(tableOptimizingProcesses.get(processId))
-            .ifPresent(p -> p.retryTask(taskRuntime));
+        .ifPresent(p -> p.retryTask(taskRuntime));
   }
 
   public void updateOptimizerGroup(ResourceGroup optimizerGroup) {
@@ -345,5 +345,4 @@ public class OptimizingQueue extends PersistentBase {
   SchedulingPolicy getSchedulingPolicy() {
     return scheduler;
   }
-
 }

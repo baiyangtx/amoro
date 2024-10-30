@@ -49,7 +49,8 @@ import java.util.Queue;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-class TableOptimizingProcess extends PersistentBase implements OptimizingProcess, TaskRuntime.TaskOwner {
+class TableOptimizingProcess extends PersistentBase
+    implements OptimizingProcess, TaskRuntime.TaskOwner {
   private static final Logger LOG = LoggerFactory.getLogger(TableOptimizingProcess.class);
   private final long processId;
   private final OptimizingType optimizingType;
@@ -86,10 +87,11 @@ class TableOptimizingProcess extends PersistentBase implements OptimizingProcess
     }
   }
 
-  public TableOptimizingProcess(OptimizingPlanner planner, TableManager tableManager) {
+  public TableOptimizingProcess(
+      OptimizingPlanner planner, TableRuntime tableRuntime, TableManager tableManager) {
     this.tableManager = tableManager;
+    this.tableRuntime = tableRuntime;
     processId = planner.getProcessId();
-    tableRuntime = planner.getTableRuntime();
     optimizingType = planner.getOptimizingType();
     planTime = planner.getPlanTime();
     targetSnapshotId = planner.getTargetSnapshotId();
@@ -386,9 +388,7 @@ class TableOptimizingProcess extends PersistentBase implements OptimizingProcess
         () -> tableRuntime.completeProcess(success));
   }
 
-  /**
-   * The cancellation should be invoked outside the process lock to avoid deadlock.
-   */
+  /** The cancellation should be invoked outside the process lock to avoid deadlock. */
   private void cancelTasks() {
     taskMap.values().forEach(TaskRuntime::tryCanceling);
   }
@@ -399,8 +399,7 @@ class TableOptimizingProcess extends PersistentBase implements OptimizingProcess
           getAs(
               OptimizingMapper.class,
               mapper ->
-                  mapper.selectTaskRuntimes(
-                      tableRuntime.getTableIdentifier().getId(), processId));
+                  mapper.selectTaskRuntimes(tableRuntime.getTableIdentifier().getId(), processId));
       Map<Integer, RewriteFilesInput> inputs = TaskFilesPersistence.loadTaskInputs(processId);
       taskRuntimes.forEach(
           taskRuntime -> {
